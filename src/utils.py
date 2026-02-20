@@ -1,4 +1,5 @@
 import pandas as pd
+from scipy.stats import linregress
 import numpy as np
 
 
@@ -46,3 +47,17 @@ def get_features_targets(train_df, val_df):
     y_val = val_df["RUL"]
 
     return X_train, y_train, X_val, y_val
+
+
+
+def compute_slope(series):
+    x = np.arange(len(series))
+    slope, _, _, _, _ = linregress(x,series)
+    return slope
+
+
+def recent_slope(series, window = 30):
+    series = series[-window:]
+    x = np.arange(len(series))
+    slope, _, _, _, _ = linregress(x,series)
+    return slope
