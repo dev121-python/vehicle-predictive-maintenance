@@ -61,3 +61,41 @@ def recent_slope(series, window = 30):
     x = np.arange(len(series))
     slope, _, _, _, _ = linregress(x,series)
     return slope
+import pandas as pd
+
+
+def add_rolling_features(df, sensor_cols, window_size=5, id_col="unit", time_col="cycle"):
+   
+    """
+    Adds rolling mean and std for given sensor columns.
+    
+    Args:
+        df: pandas DataFrame
+        sensor_cols: list of sensor column names
+        window_size: int
+        
+    Returns:
+        df with new features
+    """
+    
+    df = df.copy()
+    
+    df = df.sort_values(by=[id_col, time_col])
+    
+    for col in sensor_cols:
+        df[f"{col}_roll_mean"] = (
+            df.groupby(id_col)[col]
+              .rolling(window=window_size, min_periods=1)
+              .mean()
+              .reset_index(level=0, drop=True)
+        )
+        
+        df[f"{col}_roll_std"] = (
+            df.groupby(id_col)[col]
+              .rolling(window=window_size, min_periods=1)
+              .std()
+              .reset_index(level=0, drop=True)
+              .fillna(0)
+        )
+    
+    return df
