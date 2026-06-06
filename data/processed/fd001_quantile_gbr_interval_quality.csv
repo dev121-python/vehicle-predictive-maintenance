@@ -1,0 +1,2 @@
+dataset,method,coverage,mean_interval_width,median_interval_width,mean_abs_error
+FD001,quantile_gbr,0.7784242424242425,48.830014934438175,49.31475529244584,16.905149642322396
