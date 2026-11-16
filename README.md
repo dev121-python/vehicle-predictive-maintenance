@@ -4,8 +4,7 @@
 
 This repo contains the code and results for a study of uncertainty-aware Remaining Useful Life (RUL) prediction on the NASA C-MAPSS turbofan benchmark. Instead of ranking models by MAE/RMSE or interval coverage, it scores them by the **asymmetric cost of the maintenance decisions they produce**.
 
-> **Paper:** *Decision-Centric Evaluation of Uncertainty-Aware Remaining Useful Life Prediction for Risk-Sensitive Predictive Maintenance* — Divyang Rajesh Mittal
-> `paper/` → PDF  |  arXiv: _link to be added_
+> **Status:** research code accompanying a manuscript in preparation (*Decision-Centric Evaluation of Uncertainty-Aware Remaining Useful Life Prediction for Risk-Sensitive Predictive Maintenance*, Divyang Rajesh Mittal). The work has not been peer reviewed or published yet, and the numbers below may change before submission. A link will be added here once a preprint is available.
 
 ---
 
@@ -48,14 +47,14 @@ Bootstrap resampling is done **at the engine level** to preserve temporal trajec
 - **Data:** NASA C-MAPSS (FD001–FD004). This is simulated **aircraft turbofan** run-to-failure data. The method itself is not engine-specific, but the results here are only for this benchmark.
 - **RUL target** capped at 140 cycles.
 - **Features:** 3 operational settings, 5 sensor channels (`s7, s12, s14, s20, s21`), and rolling mean/std over a 5-cycle window.
-- **Split:** strict engine-wise 60% train / 20% calibration / 20% evaluation. No cycles from evaluation engines appear in training or calibration, so there is no leakage.
+- **Split:** the final experiments use only the NASA **training** files. Their engines are split **by engine** into 60% train / 20% calibration / 20% evaluation (seed 42). No cycles from evaluation engines appear in training or calibration, so there is no leakage. The NASA test files are not used.
 
-| Dataset | Train engines | Test engines | Operating conditions | Fault modes |
-|---|---|---|---|---|
-| FD001 | 100 | 100 | 1 | 1 |
-| FD002 | 260 | 259 | 6 | 1 |
-| FD003 | 100 | 100 | 1 | 2 |
-| FD004 | 248 | 249 | 6 | 2 |
+| Dataset | Engines in NASA train file | Operating conditions | Fault modes |
+|---|---|---|---|
+| FD001 | 100 | 1 | 1 |
+| FD002 | 260 | 6 | 1 |
+| FD003 | 100 | 1 | 2 |
+| FD004 | 248 | 6 | 2 |
 
 ---
 
@@ -106,10 +105,8 @@ Note that the percentage reductions are relative to each method's own point base
 
 ### Figures
 
-<!-- Replace these paths with wherever you save the figures in the repo -->
-![Average decision-cost reduction](figures/avg_cost_reduction.png)
-![Average missed-risk reduction](figures/avg_fn_reduction.png)
-![Point vs uncertainty-aware cost at c_fn = 20](figures/cost_cfn20.png)
+![Average decision-cost reduction](reports/method_comparison/final_avg_cost_reduction_all_methods.png)
+![Average missed-risk reduction](reports/method_comparison/final_avg_fn_reduction_all_methods.png)
 
 ---
 
@@ -134,35 +131,54 @@ Note that the percentage reductions are relative to each method's own point base
 
 ## Repository structure
 
-<!-- TODO: replace with your actual layout -->
 ```
 .
-├── data/              # C-MAPSS files (not included; see below)
-├── src/ or notebooks/ # TODO
-├── figures/           # TODO
-├── paper/             # TODO: PDF / LaTeX
-├── requirements.txt   # TODO
+├── data/
+│   ├── raw/          # NASA C-MAPSS files (train_/test_/RUL_FD00x.txt)
+│   └── processed/    # per-run CSVs written by the scripts
+├── notebooks/        # 01-07 numbered analysis notebooks + eda_01
+├── reports/
+│   ├── method_comparison/        # aggregated result tables (CSV) and figures
+│   └── final_rf_tree_baseline/   # plots for the RF tree-disagreement baseline
+├── scripts/          # experiment runners (see below)
+├── src/
+│   ├── config.py     # paths, RUL cap, seed, selected sensors
+│   ├── data/         # loading
+│   ├── features/     # RUL target, rolling features, engine-wise splits
+│   ├── models/       # baseline models
+│   ├── uncertainty/  # RF tree std, bootstrap ensembles, quantile models
+│   ├── evaluation/   # maintenance policy and k-sweeps
+│   └── visualization/
 └── README.md
 ```
 
 ## Reproducing the results
 
-<!-- TODO: fill in with your real commands -->
+1. **Data.** The C-MAPSS files are already in `data/raw/`. They come from the NASA Prognostics Data Repository (see `data/raw/readme.txt` and the reference below).
+2. **Environment.** Python 3 with `numpy`, `pandas`, `scikit-learn` and `matplotlib` (plus `jupyter` for the notebooks). A pinned `requirements.txt` is not included yet.
+3. **Run the experiments** from the repo root so that `src` is importable:
 
-1. **Get the data.** Download the NASA C-MAPSS Turbofan Engine Degradation Simulation dataset from the NASA Prognostics Data Repository and place it in `data/`.
-2. **Install dependencies.** `pip install -r requirements.txt` (Python version: _TODO_)
-3. **Run the experiments.** _TODO: e.g. `python run_experiments.py` or the notebook order_
-4. **Outputs.** _TODO: where tables and figures are written_
+```bash
+export PYTHONPATH=.
+
+python scripts/run_clean_split_rf_policy.py                                      # rf_tree_std
+python scripts/run_clean_split_bootstrap_policy_all_datasets.py --model_type rf  # bootstrap_rf
+python scripts/run_clean_split_bootstrap_policy_all_datasets.py --model_type gbr # bootstrap_gbr
+python scripts/run_clean_split_quantile_policy_all_datasets.py                   # quantile_gbr
+```
+
+   Each script runs all four datasets and all six cost ratios. For every dataset it chooses `k` on the calibration engines and reports cost on the evaluation engines. Per-dataset outputs and an `all_datasets_*_clean_cal_to_eval_summary.csv` are written to `data/processed/`. The seed is fixed at 42.
+4. **Aggregated tables and figures** are in `reports/method_comparison/`. Notebook `07_clean_split_results_analysis.ipynb` analyses the clean-split results.
+
+**Earlier exploratory scripts.** Scripts such as `run_all_datasets_uncertainty_policy.py` come from an earlier stage of the project. They pick `k` on the same validation split they report on, so they are not used for the headline results. The `run_clean_split_*` scripts above are the ones that follow the calibration → evaluation protocol described in this README.
 
 ## Citation
 
-```bibtex
-@misc{mittal_rul_decision_centric,
-  author = {Mittal, Divyang Rajesh},
-  title  = {Decision-Centric Evaluation of Uncertainty-Aware Remaining Useful Life Prediction for Risk-Sensitive Predictive Maintenance},
-  note   = {Preprint. arXiv link to be added.}
-}
-```
+No preprint is available yet. Citation details will be added here when the manuscript is public.
+
+## License
+
+Code is released under the MIT License (see `LICENSE`). The C-MAPSS data belongs to NASA; see `data/raw/readme.txt` for its terms and provenance.
 
 ## Reference
 
